@@ -5,6 +5,7 @@ from trades_without_ce_loss import *
 from cifar100_models import *
 import torchvision
 from torchvision import datasets, transforms
+import time
 
 prefix = 'mobilenet_v2-CIFAR100_teacher_wideresnet_RSLAD'
 epochs = 300
@@ -34,16 +35,14 @@ student = student.cuda()
 student.train()
 optimizer = optim.SGD(student.parameters(), lr=0.1, momentum=0.9, weight_decay=2e-4)
 def kl_loss(a,b):
-    loss = -a*b
-    return loss
-teacher = wideresnet()
-state_dict = torch.load('./models/wideresnet_CIFAR1000.3134.pth')
-new_state_dict = {}
-for key in state_dict:
-    new_state_dict[key.split('module.')[1]] = state_dict[key]
-teacher.load_state_dict(new_state_dict)
+    return -a*b
+
+teacher = WideResNet_70_16()
+state_dict = torch.load('./models/success_model/cifar100_linf_wrn70-16_without.pt')
+teacher.load_state_dict(state_dict)
 teacher = torch.nn.DataParallel(teacher)
 teacher = teacher.cuda()
+#teacher = teacher.half()
 teacher.eval()
 
 for epoch in range(1,epochs+1):
@@ -54,15 +53,16 @@ for epoch in range(1,epochs+1):
         optimizer.zero_grad()
         with torch.no_grad():
             teacher_logits = teacher(train_batch_data)
-
-        adv_logits = trades_loss_without_celoss6(student,teacher_logits,train_batch_data,train_batch_labels,optimizer,step_size=0.0078,epsilon=epsilon,perturb_steps=10)
+            #teacher_logits = teacher(train_batch_data.half())
+            #teacher_logits = teacher_logits.float().detach()
+        adv_logits = trades_loss_without_celoss6(student,teacher_logits,train_batch_data,train_batch_labels,optimizer,step_size=2/255.0,epsilon=epsilon,perturb_steps=10)
         student.train()
         nat_logits = student(train_batch_data)
-        kl_Loss1 = kl_loss(F.log_softmax(adv_logits,dim=1),F.softmax(teacher_logits.detach(),dim=1))
-        kl_Loss2 = kl_loss(F.log_softmax(nat_logits,dim=1),F.softmax(teacher_logits.detach(),dim=1))
-        kl_Loss1 = 10*torch.mean(kl_Loss1)#since the kl loss is averaged by each element, the loss of CIFAR10 is 10 times larger than CIFAR100, here we keep the same ratio on both CIFAR10 and CIFAR100
+        kl_Loss1 = kl_loss(torch.log(F.softmax(adv_logits,dim=1)),F.softmax(teacher_logits.detach(),dim=1))
+        kl_Loss2 = kl_loss(torch.log(F.softmax(nat_logits,dim=1)),F.softmax(teacher_logits.detach(),dim=1))
+        kl_Loss1 = 10*torch.mean(kl_Loss1)#keep the same ratio of CIFAR10
         kl_Loss2 = 10*torch.mean(kl_Loss2)
-        loss = 5/6.0*kl_Loss1 + 1/6.0*kl_Loss2
+        loss = 5.0/6.0*kl_Loss1 + 1.0/6.0*kl_Loss2
         loss.backward()
         optimizer.step()
         if step%100 == 0:
@@ -80,6 +80,7 @@ for epoch in range(1,epochs+1):
         test_acc = np.sum(test_accs==0)/len(test_accs)
         print('robust acc',np.sum(test_accs==0)/len(test_accs))
         torch.save(student.state_dict(),'./models/'+prefix+str(np.sum(test_accs==0)/len(test_accs))+'.pth')
+        #torch.save({'student':student.state_dict(),'optimizer':optimizer.state_dict()},'./models/'+prefix+str(np.sum(test_accs==0)/len(test_accs))+'.pth')
     if epoch in [215,260,285]:
         for param_group in optimizer.param_groups:
             param_group['lr'] *= 0.1
