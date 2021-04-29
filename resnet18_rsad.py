@@ -36,8 +36,8 @@ student = torch.nn.DataParallel(student)
 student = student.cuda()
 student.train()
 optimizer = optim.SGD(student.parameters(), lr=0.1, momentum=0.9, weight_decay=2e-4)
-kl_loss = nn.KLDivLoss(size_average=False,reduce=False)
-def ce_loss(a,b):
+def kl_loss(a,b):
+    # if the target label is soft label, the CE loss is equal to KL loss
     loss = -a*b
     return loss
 teacher = wideresnet()
@@ -58,8 +58,8 @@ for epoch in range(1,epochs+1):
         adv_logits = trades_loss_without_celoss6(student,teacher_logits,train_batch_data,train_batch_labels,optimizer,step_size=0.0078,epsilon=epsilon,perturb_steps=10)
         student.train()
         nat_logits = student(train_batch_data)
-        kl_Loss1 = ce_loss(F.log_softmax(adv_logits,dim=1),F.softmax(teacher_logits.detach(),dim=1))
-        kl_Loss2 = ce_loss(F.log_softmax(nat_logits,dim=1),F.softmax(teacher_logits.detach(),dim=1))
+        kl_Loss1 = kl_loss(F.log_softmax(adv_logits,dim=1),F.softmax(teacher_logits.detach(),dim=1))
+        kl_Loss2 = kl_loss(F.log_softmax(nat_logits,dim=1),F.softmax(teacher_logits.detach(),dim=1))
         kl_Loss1 = torch.mean(kl_Loss1)
         kl_Loss2 = torch.mean(kl_Loss2)
         loss = 5/6.0*kl_Loss1 + 1/6.0*kl_Loss2
