@@ -5,9 +5,6 @@ from trades_without_ce_loss import *
 from cifar10_models import *
 import torchvision
 from torchvision import datasets, transforms
-torch.manual_seed(0)
-torch.cuda.manual_seed_all(0)
-torch.backends.cudnn.deterministic = True
 
 prefix = 'mobilenet_v2-teacher_wideresnet_RSLAD'
 epochs = 300
@@ -53,7 +50,7 @@ for epoch in range(235,epochs+1):
         optimizer.zero_grad()
         with torch.no_grad():
             teacher_logits = teacher(train_batch_data)
-
+        
         adv_logits = trades_loss_without_celoss6(student,teacher_logits,train_batch_data,train_batch_labels,optimizer,step_size=0.0078,epsilon=epsilon,perturb_steps=10)
         student.train()
         nat_logits = student(train_batch_data)
