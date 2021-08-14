@@ -7,7 +7,7 @@ For the training for [SAT](https://arxiv.org/pdf/1706.06083.pdf)(which is also k
 
 Note the KL implementation issue. Since the KL is defined as: 
 <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default">$$ D_{KL} = -\sum_{i=0}^{n} P(i)ln(Q(i)/P(i)) $$</script>
-<img src="http://chart.googleapis.com/chart?cht=tx&chl= D_{KL} = -\sum_{i=0}^{n} P(i)ln(Q(i)/P(i))" style="border:none;">
+<img src="http://chart.googleapis.com/chart?cht=tx&chl= D_{KL} = -\sum_{i=0}^{n} P(i)ln(\frac{Q(i)}{P(i)})" style="border:none;">
 
 
 
