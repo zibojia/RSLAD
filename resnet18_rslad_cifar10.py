@@ -5,7 +5,7 @@ from rslad_loss import *
 from cifar10_models import *
 import torchvision
 from torchvision import datasets, transforms
-# we fix the random seed to 0, in the same computer, this method can make the results same as before.
+# we fix the random seed to 0, this method can keep the results consistent in the same conputer.
 torch.manual_seed(0)
 torch.cuda.manual_seed_all(0)
 torch.backends.cudnn.deterministic = True
