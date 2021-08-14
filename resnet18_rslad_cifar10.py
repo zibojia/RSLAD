@@ -76,7 +76,7 @@ for epoch in range(1,epochs+1):
         test_accs = np.array(test_accs)
         test_acc = np.sum(test_accs==0)/len(test_accs)
         print('robust acc',np.sum(test_accs==0)/len(test_accs))
-        torch.save(tudent.state_dict(),'./models/'+prefix+str(np.sum(test_accs==0)/len(test_accs))+'.pth')
+        torch.save(student.state_dict(),'./models/'+prefix+str(np.sum(test_accs==0)/len(test_accs))+'.pth')
     if epoch in [215,260,285]:
         for param_group in optimizer.param_groups:
             param_group['lr'] *= 0.1
