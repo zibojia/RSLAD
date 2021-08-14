@@ -1,0 +1,1 @@
+The teacher model is download in TRADES [here](https://drive.google.com/file/d/10sHvaXhTNZGz618QmD5gSOAjO3rMzV33/view) and [here](https://github.com/deepmind/deepmind-research/tree/master/adversarial_robustness).
