@@ -22,4 +22,4 @@ This is the official code for "Revisiting Adversarial Robustness Distillation: R
 
 ### Model Pretrained Download
 
-* We provided the pretrained models. Its
+* We provided the pretrained models. It can be download [here](https://www.google.com/drive/)
