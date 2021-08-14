@@ -2,10 +2,10 @@
 This is the official code for "Revisiting Adversarial Robustness Distillation: Robust Soft Labels Make Student Better". The paper can be download [here](https://arxiv.org).
 
 ### Prerequisites
-* Python 3.7.7
-* Pytorch 1.3.0
-* CUDA 10.1.243
-* numpy 1.19.1
+* Python 3.7
+* Pytorch 1.3
+* CUDA 10.1
+* numpy 1.19
 
 ### Code Implementation
 **Baseline Implementation**
