@@ -54,7 +54,7 @@ for epoch in range(1,epochs+1):
         optimizer.zero_grad()
         with torch.no_grad():
             teacher_logits = teacher(train_batch_data)
-        adv_logits = trades_loss_without_celoss6(student,teacher_logits,train_batch_data,train_batch_labels,optimizer,step_size=2/255.0,epsilon=epsilon,perturb_steps=10)
+        adv_logits = rslad_inner_loss(student,teacher_logits,train_batch_data,train_batch_labels,optimizer,step_size=2/255.0,epsilon=epsilon,perturb_steps=10)
         student.train()
         nat_logits = student(train_batch_data)
         kl_Loss1 = kl_loss(torch.log(F.softmax(adv_logits,dim=1)),F.softmax(teacher_logits.detach(),dim=1))
