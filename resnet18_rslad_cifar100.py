@@ -39,7 +39,7 @@ def kl_loss(a,b):
     return -a*b + torch.log(b+1e-5)*b
 
 teacher = WideResNet_70_16()
-state_dict = torch.load('./models/success_model/cifar100_linf_wrn70-16_without.pt')
+state_dict = torch.load('./models/cifar100_linf_wrn70-16_without.pt')
 teacher.load_state_dict(state_dict)
 teacher = torch.nn.DataParallel(teacher)
 teacher = teacher.cuda()
