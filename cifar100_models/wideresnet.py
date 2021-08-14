@@ -1,98 +1,165 @@
-import math
+from typing import Tuple, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-__all__ = ['wideresnet']
-
-class BasicBlock(nn.Module):
-    def __init__(self, in_planes, out_planes, stride, dropRate=0.0):
-        super(BasicBlock, self).__init__()
-        self.bn1 = nn.BatchNorm2d(in_planes)
-        self.relu1 = nn.ReLU(inplace=True)
-        self.conv1 = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                               padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_planes)
-        self.relu2 = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_planes, out_planes, kernel_size=3, stride=1,
-                               padding=1, bias=False)
-        self.droprate = dropRate
-        self.equalInOut = (in_planes == out_planes)
-        self.convShortcut = (not self.equalInOut) and nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride,
-                                                                padding=0, bias=False) or None
-
-    def forward(self, x):
-        if not self.equalInOut:
-            x = self.relu1(self.bn1(x))
-        else:
-            out = self.relu1(self.bn1(x))
-        out = self.relu2(self.bn2(self.conv1(out if self.equalInOut else x)))
-        if self.droprate > 0:
-            out = F.dropout(out, p=self.droprate, training=self.training)
-        out = self.conv2(out)
-        return torch.add(x if self.equalInOut else self.convShortcut(x), out)
+CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
+CIFAR10_STD = (0.2471, 0.2435, 0.2616)
+CIFAR100_MEAN = (0.5071, 0.4865, 0.4409)
+CIFAR100_STD = (0.2673, 0.2564, 0.2762)
 
 
-class NetworkBlock(nn.Module):
-    def __init__(self, nb_layers, in_planes, out_planes, block, stride, dropRate=0.0):
-        super(NetworkBlock, self).__init__()
-        self.layer = self._make_layer(block, in_planes, out_planes, nb_layers, stride, dropRate)
+class _Swish(torch.autograd.Function):
+  """Custom implementation of swish."""
 
-    def _make_layer(self, block, in_planes, out_planes, nb_layers, stride, dropRate):
-        layers = []
-        for i in range(int(nb_layers)):
-            layers.append(block(i == 0 and in_planes or out_planes, out_planes, i == 0 and stride or 1, dropRate))
-        return nn.Sequential(*layers)
+  @staticmethod
+  def forward(ctx, i):
+    result = i * torch.sigmoid(i)
+    ctx.save_for_backward(i)
+    return result
 
-    def forward(self, x):
-        return self.layer(x)
+  @staticmethod
+  def backward(ctx, grad_output):
+    i = ctx.saved_variables[0]
+    sigmoid_i = torch.sigmoid(i)
+    return grad_output * (sigmoid_i * (1 + i * (1 - sigmoid_i)))
+
+
+class Swish(nn.Module):
+  """Module using custom implementation."""
+
+  def forward(self, input_tensor):
+    return _Swish.apply(input_tensor)
+
+
+class _Block(nn.Module):
+  """WideResNet Block."""
+
+  def __init__(self, in_planes, out_planes, stride, activation_fn=nn.ReLU):
+    super().__init__()
+    self.batchnorm_0 = nn.BatchNorm2d(in_planes)
+    self.relu_0 = activation_fn()
+    # We manually pad to obtain the same effect as `SAME` (necessary when
+    # `stride` is different than 1).
+    self.conv_0 = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                            padding=0, bias=False)
+    self.batchnorm_1 = nn.BatchNorm2d(out_planes)
+    self.relu_1 = activation_fn()
+    self.conv_1 = nn.Conv2d(out_planes, out_planes, kernel_size=3, stride=1,
+                            padding=1, bias=False)
+    self.has_shortcut = in_planes != out_planes
+    if self.has_shortcut:
+      self.shortcut = nn.Conv2d(in_planes, out_planes, kernel_size=1,
+                                stride=stride, padding=0, bias=False)
+    else:
+      self.shortcut = None
+    self._stride = stride
+
+  def forward(self, x):
+    if self.has_shortcut:
+      x = self.relu_0(self.batchnorm_0(x))
+    else:
+      out = self.relu_0(self.batchnorm_0(x))
+    v = x if self.has_shortcut else out
+    if self._stride == 1:
+      v = F.pad(v, (1, 1, 1, 1))
+    elif self._stride == 2:
+      v = F.pad(v, (0, 1, 0, 1))
+    else:
+      raise ValueError('Unsupported `stride`.')
+    out = self.conv_0(v)
+    out = self.relu_1(self.batchnorm_1(out))
+    out = self.conv_1(out)
+    out = torch.add(self.shortcut(x) if self.has_shortcut else x, out)
+    return out
+
+
+class _BlockGroup(nn.Module):
+  """WideResNet block group."""
+
+  def __init__(self, num_blocks, in_planes, out_planes, stride,
+               activation_fn=nn.ReLU):
+    super().__init__()
+    block = []
+    for i in range(num_blocks):
+      block.append(
+          _Block(i == 0 and in_planes or out_planes,
+                 out_planes,
+                 i == 0 and stride or 1,
+                 activation_fn=activation_fn))
+    self.block = nn.Sequential(*block)
+
+  def forward(self, x):
+    return self.block(x)
 
 
 class WideResNet(nn.Module):
-    def __init__(self, depth=34, num_classes=100, widen_factor=10, dropRate=0.0):
-        super(WideResNet, self).__init__()
-        nChannels = [16, 16 * widen_factor, 32 * widen_factor, 64 * widen_factor]
-        assert ((depth - 4) % 6 == 0)
-        n = (depth - 4) / 6
-        block = BasicBlock
-        # 1st conv before any network block
-        self.conv1 = nn.Conv2d(3, nChannels[0], kernel_size=3, stride=1,
-                               padding=1, bias=False)
-        # 1st block
-        self.block1 = NetworkBlock(n, nChannels[0], nChannels[1], block, 1, dropRate)
-        # 1st sub-block
-        self.sub_block1 = NetworkBlock(n, nChannels[0], nChannels[1], block, 1, dropRate)
-        # 2nd block
-        self.block2 = NetworkBlock(n, nChannels[1], nChannels[2], block, 2, dropRate)
-        # 3rd block
-        self.block3 = NetworkBlock(n, nChannels[2], nChannels[3], block, 2, dropRate)
-        # global average pooling and classifier
-        self.bn1 = nn.BatchNorm2d(nChannels[3])
-        self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(nChannels[3], num_classes)
-        self.nChannels = nChannels[3]
+  """WideResNet."""
 
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-            elif isinstance(m, nn.Linear):
-                m.bias.data.zero_()
+  def __init__(self,
+               num_classes: int = 10,
+               depth: int = 28,
+               width: int = 10,
+               activation_fn: nn.Module = nn.ReLU,
+               mean: Union[Tuple[float, ...], float] = CIFAR10_MEAN,
+               std: Union[Tuple[float, ...], float] = CIFAR10_STD,
+               padding: int = 0,
+               num_input_channels: int = 3):
+    super().__init__()
+    self.mean = torch.tensor(mean).view(num_input_channels, 1, 1)
+    self.std = torch.tensor(std).view(num_input_channels, 1, 1)
+    self.mean_cuda = None
+    self.std_cuda = None
+    self.padding = padding
+    num_channels = [16, 16 * width, 32 * width, 64 * width]
+    assert (depth - 4) % 6 == 0
+    num_blocks = (depth - 4) // 6
+    self.init_conv = nn.Conv2d(num_input_channels, num_channels[0],
+                               kernel_size=3, stride=1, padding=1, bias=False)
+    self.layer = nn.Sequential(
+        _BlockGroup(num_blocks, num_channels[0], num_channels[1], 1,
+                    activation_fn=activation_fn),
+        _BlockGroup(num_blocks, num_channels[1], num_channels[2], 2,
+                    activation_fn=activation_fn),
+        _BlockGroup(num_blocks, num_channels[2], num_channels[3], 2,
+                    activation_fn=activation_fn))
+    self.batchnorm = nn.BatchNorm2d(num_channels[3])
+    self.relu = activation_fn()
+    self.logits = nn.Linear(num_channels[3], num_classes)
+    self.num_channels = num_channels[3]
 
-    def forward(self, x):
-        out = self.conv1(x)
-        out = self.block1(out)
-        out = self.block2(out)
-        out = self.block3(out)
-        out = self.relu(self.bn1(out))
-        out = F.avg_pool2d(out, 8)
-        out = out.view(-1, self.nChannels)
-        return self.fc(out)
+  def forward(self, x):
+    if self.padding > 0:
+      x = F.pad(x, (self.padding,) * 4)
+    if x.is_cuda:
+      if self.mean_cuda is None:
+        self.mean_cuda = self.mean.cuda()
+        self.std_cuda = self.std.cuda()
+      if 'float16' in str(x.dtype):
+        self.mean_cuda = self.mean_cuda.half()
+        self.std_cuda = self.std_cuda.half()
+      out = (x - self.mean_cuda) / self.std_cuda
+    else:
+      out = (x - self.mean) / self.std
+    out = self.init_conv(out)
+    out = self.layer(out)
+    out = self.relu(self.batchnorm(out))
+    out = F.avg_pool2d(out, 8)
+    out = out.view(-1, self.num_channels)
+    return self.logits(out)
 
-def wideresnet(pretrained=False):
-    model = WideResNet()
+def WideResNet_70_16():
+    model = WideResNet(
+        num_classes=100, depth=70, width=16,
+        activation_fn=Swish, mean=CIFAR10_MEAN,
+        std=CIFAR10_STD)
+    return model
+
+def WideResNet_34_20():
+    model = WideResNet(
+        num_classes=100, depth=34, width=20,
+        activation_fn=Swish, mean=CIFAR10_MEAN,
+        std=CIFAR10_STD)
     return model
