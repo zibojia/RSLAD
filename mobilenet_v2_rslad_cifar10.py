@@ -11,7 +11,7 @@ torch.manual_seed(0)
 torch.cuda.manual_seed_all(0)
 torch.backends.cudnn.deterministic = True
 
-prefix = 'resnet18-CIFAR10_RSLAD'
+prefix = 'mobilenet_v2-CIFAR10_RSLAD'
 epochs = 300
 batch_size = 128
 
