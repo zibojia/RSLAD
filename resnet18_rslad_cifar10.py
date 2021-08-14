@@ -5,7 +5,6 @@ from rslad_loss import *
 from cifar10_models import *
 import torchvision
 from torchvision import datasets, transforms
-import time
 # we fix the random seed to 0, in the same computer, this method can make the results same as before.
 torch.manual_seed(0)
 torch.cuda.manual_seed_all(0)
@@ -46,7 +45,6 @@ teacher.eval()
 
 for epoch in range(1,epochs+1):
     for step,(train_batch_data,train_batch_labels) in enumerate(trainloader):
-        start = time.time()
         student.train()
         train_batch_data = train_batch_data.float().cuda()
         train_batch_labels = train_batch_labels.cuda()
@@ -64,8 +62,6 @@ for epoch in range(1,epochs+1):
         loss = 5/6.0*kl_Loss1 + 1/6.0*kl_Loss2
         loss.backward()
         optimizer.step()
-        end = time.time()
-        print(end-start)
         if step%100 == 0:
             print('loss',loss.item())
     if (epoch%20 == 0 and epoch <215) or (epoch%1 == 0 and epoch >= 215):
@@ -80,7 +76,7 @@ for epoch in range(1,epochs+1):
         test_accs = np.array(test_accs)
         test_acc = np.sum(test_accs==0)/len(test_accs)
         print('robust acc',np.sum(test_accs==0)/len(test_accs))
-        torch.save({'student':student.state_dict(),'optimizer':optimizer.state_dict()},'./models/'+prefix+str(np.sum(test_accs==0)/len(test_accs))+'.pth')
+        torch.save(tudent.state_dict(),'./models/'+prefix+str(np.sum(test_accs==0)/len(test_accs))+'.pth')
     if epoch in [215,260,285]:
         for param_group in optimizer.param_groups:
             param_group['lr'] *= 0.1
