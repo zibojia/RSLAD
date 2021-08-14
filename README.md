@@ -25,7 +25,7 @@ This is the official code for "Revisiting Adversarial Robustness Distillation: R
 
 ### Citation
 ```
-@inproceedings{zhang2019theoretically, 
+@inproceedings{zi2021revisiting, 
 	author = {Bojia Zi and Shihao Zhao and Xingjun Ma and Yu-Gang Jiang}, 
 	title = {Revisiting Adversarial Robustness Distillation: Robust Soft Labels Make Student Better}, 
 	booktitle = {International Conference on Computer Vision},
