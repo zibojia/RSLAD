@@ -7,6 +7,8 @@ For the training for [SAT](https://arxiv.org/pdf/1706.06083.pdf)(which is also k
 
 Note the KL implementation issue. Since the KL is defined as 
 
+http://www.forkosh.com/mathtex.cgi?D_{KL} = \sum_{i=0}^{n} P(i)log()
+
 $$ 
 
 D_{KL} = \sum_{i=0}^{n} P(i)log() 
