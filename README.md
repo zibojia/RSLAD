@@ -18,7 +18,7 @@ This is the official code for "Revisiting Adversarial Robustness Distillation: R
 
 **Student Implementation**
 
-* For the student model, we use the loss defined in RSLAD to compare with ARD and IAD. Note the KL implementation issue in RSLAD, ARD and IAD. The orignal KL divergence is defined as: <img src="http://chart.googleapis.com/chart?cht=tx&chl= D_{KL} = -\sum_{i=0}^{n} P(i)ln(\frac{Q(i)}{P(i)})" style="border:none;"> and  the pytorch default implementation is defined as : <img src="http://chart.googleapis.com/chart?cht=tx&chl= D_{KL} = -\frac{1}{n}\cdot\sum_{i=0}^{n} P(i)ln(\frac{Q(i)}{P(i)})" style="border:none;">. For CIFAR-10, **n=10**, for CIFAR-100, **n=100**, which means the KL used for CIFAR-100 is **10 times smaller** than CIFAR-10 in pytorch default implementation. Thus, we multiply 10 for CIFAR-100 to keep consistent with CIFAR-10. 
+* For the student model, we use the loss defined in RSLAD to compare with ARD and IAD. Note the KL implementation issue in RSLAD, ARD and IAD. The orignal KL divergence is defined as: <img src="http://chart.googleapis.com/chart?cht=tx&chl= D_{KL} = -\sum_{i=0}^{n} P(i)ln(\frac{Q(i)}{P(i)})" style="border:none;"> and  the pytorch default implementation is defined as : <img src="http://chart.googleapis.com/chart?cht=tx&chl= D_{KL} = -\frac{1}{n}\cdot\sum_{i=0}^{n} P(i)ln(\frac{Q(i)}{P(i)})" style="border:none;">. For CIFAR-10, **n=10**, for CIFAR-100, **n=100**, which means the KL used for CIFAR-100 is **10 times smaller** than CIFAR-10 in pytorch default implementation. Thus, we multiply 10 for KL used for CIFAR-100 to keep consistent with CIFAR-10. 
 
 ### Model Pretrained Download
 * We provided the pretrained models. It can be download [here](https://www.google.com/drive/)
