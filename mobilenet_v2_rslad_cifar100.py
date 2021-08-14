@@ -11,7 +11,7 @@ torch.manual_seed(0)
 torch.cuda.manual_seed_all(0)
 torch.backends.cudnn.deterministic = True
 
-prefix = 'resnet18-CIFAR100_RSLAD'
+prefix = 'mobilenet_v2-CIFAR100_RSLAD'
 epochs = 300
 batch_size = 128
 
@@ -79,7 +79,7 @@ for epoch in range(1,epochs+1):
         test_accs = np.array(test_accs)
         test_acc = np.sum(test_accs==0)/len(test_accs)
         print('robust acc',np.sum(test_accs==0)/len(test_accs))
-        torch.save({'student':student.state_dict(),'optimizer':optimizer.state_dict()},'./models/'+prefix+str(np.sum(test_accs==0)/len(test_accs))+'.pth')
+        torch.save(student.state_dict(),'./models/'+prefix+str(np.sum(test_accs==0)/len(test_accs))+'.pth')
     if epoch in [215,260,285]:
         for param_group in optimizer.param_groups:
             param_group['lr'] *= 0.1
