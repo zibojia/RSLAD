@@ -1,5 +1,5 @@
 # RSLAD
-This is the official code for "Revisiting Adversarial Robustness Distillation: Robust Soft Labels Make Student Better". The paper can be download [here](https://arxiv.org/abs/2108.07969).
+This is the official code for ICCV'21 "Revisiting Adversarial Robustness Distillation: Robust Soft Labels Make Student Better". The paper can be download [here](https://arxiv.org/abs/2108.07969).
 
 ### Prerequisites
 * Python 3.7
