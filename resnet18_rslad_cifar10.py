@@ -13,6 +13,7 @@ torch.backends.cudnn.deterministic = True
 prefix = 'resnet18-CIFAR10_RSLAD'
 epochs = 300
 batch_size = 128
+epsilon = 8/255.0
 
 transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
