@@ -44,7 +44,6 @@ state_dict = torch.load('./models/cifar100_linf_wrn70-16_without.pt')
 teacher.load_state_dict(state_dict)
 teacher = torch.nn.DataParallel(teacher)
 teacher = teacher.cuda()
-teacher = teacher.half()
 teacher.eval()
 
 for epoch in range(1,epochs+1):
