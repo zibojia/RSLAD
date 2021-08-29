@@ -47,7 +47,6 @@ teacher.eval()
 
 for epoch in range(1,epochs+1):
     for step,(train_batch_data,train_batch_labels) in enumerate(trainloader):
-        start = time.time()
         student.train()
         train_batch_data = train_batch_data.float().cuda()
         train_batch_labels = train_batch_labels.cuda()
@@ -65,8 +64,6 @@ for epoch in range(1,epochs+1):
         loss = 5/6.0*kl_Loss1 + 1/6.0*kl_Loss2
         loss.backward()
         optimizer.step()
-        end = time.time()
-        print(end-start)
         if step%100 == 0:
             print('loss',loss.item())
     if (epoch%20 == 0 and epoch <215) or (epoch%1 == 0 and epoch >= 215):
